@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createCarousel, addSlide, deleteCarousel } from "@/lib/carousels";
+import { createCarousel, addSlide, deleteCarousel, getCarousel } from "@/lib/carousels";
 import { exportAllSlides } from "@/lib/export-slides";
 import type { AspectRatio } from "@/types/carousel";
 
@@ -42,8 +42,6 @@ export async function POST(request: Request) {
       await addSlide(carouselId, s.html, s.notes ?? "");
     }
 
-    // Re-read carousel after adding slides
-    const { getCarousel } = await import("@/lib/carousels");
     const populated = await getCarousel(carouselId);
     if (!populated) throw new Error("Carousel disappeared after creation");
 
