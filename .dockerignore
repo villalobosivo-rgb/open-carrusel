@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env.local
+.env*.local
+*.log
+npm-debug.log*
+.DS_Store
+data/carousels.json
+public/uploads/*
+!public/uploads/.gitkeep
+docs
+README.md
+AGENTS.md

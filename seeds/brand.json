@@ -1,0 +1,23 @@
+{
+  "name": "Revenight",
+  "colors": {
+    "primary": "#AB62EE",
+    "secondary": "#242424",
+    "accent": "#E0529E",
+    "background": "#0F0F0F",
+    "surface": "#171717"
+  },
+  "fonts": {
+    "heading": "Inter",
+    "body": "Inter"
+  },
+  "customFonts": [],
+  "logoPath": "/uploads/ce73dfec-9000-4e16-8818-9f6cadbc95f8.png",
+  "styleKeywords": [
+    "bold",
+    "modern",
+    "professional"
+  ],
+  "createdAt": "2026-04-25T19:44:16.312Z",
+  "updatedAt": "2026-04-25T19:44:16.312Z"
+}
