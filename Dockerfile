@@ -3,7 +3,6 @@ FROM node:20-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV NODE_ENV=production
 
 # Chromium + fonts + all X11 libs Puppeteer needs
 RUN apt-get update && apt-get install -y \
@@ -45,10 +44,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build
+
+ENV NODE_ENV=production
 
 # Seed defaults + ensure writable dirs (volumes override in prod)
 RUN mkdir -p /app/data /app/public/uploads
