@@ -34,7 +34,7 @@ async function getBrowser(): Promise<Browser> {
  */
 async function inlineImages(html: string): Promise<string> {
   const uploadDir = path.resolve(process.cwd(), "public");
-  const imgRegex = /(?:src=["']|url\(["']?)(\/uploads\/[^"'\s)]+)/g;
+  const imgRegex = /(?:src=["']|url\(["']?)(\/(?:uploads|brand)\/[^"'\s)]+)/g;
   const matches = [...html.matchAll(imgRegex)];
 
   let result = html;
