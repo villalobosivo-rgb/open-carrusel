@@ -76,6 +76,7 @@ async function fetchAndInlineFont(family: string): Promise<string | null> {
   // Fetch CSS from Google Fonts (with woff2-capable user agent)
   const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@300;400;500;600;700;800&display=block`;
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(6000),
     headers: {
       // User agent that tells Google to serve woff2 format
       "User-Agent":
@@ -93,7 +94,7 @@ async function fetchAndInlineFont(family: string): Promise<string | null> {
   for (const match of matches) {
     const fontUrl = match[1];
     try {
-      const fontResponse = await fetch(fontUrl);
+      const fontResponse = await fetch(fontUrl, { signal: AbortSignal.timeout(8000) });
       if (!fontResponse.ok) continue;
       const buffer = await fontResponse.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");

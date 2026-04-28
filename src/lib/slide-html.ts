@@ -47,11 +47,13 @@ export function wrapSlideHtml(
   const fontFamilies = extractFontFamilies(slideHtml);
 
   let fontBlock = "";
-  if (options?.inlineFontCss) {
-    // For export: use inlined base64 @font-face CSS
-    fontBlock = `<style>${options.inlineFontCss}</style>`;
+  if (options !== undefined) {
+    // Export mode: use inlined CSS only — never make network requests during Puppeteer render
+    fontBlock = options.inlineFontCss
+      ? `<style>${options.inlineFontCss}</style>`
+      : "";
   } else if (fontFamilies.length > 0) {
-    // For preview: use Google Fonts CDN link
+    // Preview mode: use Google Fonts CDN link
     const params = fontFamilies
       .map(
         (f) =>
