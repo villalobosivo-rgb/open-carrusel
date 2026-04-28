@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 
     const timestamp = Date.now();
     const imageUrls: string[] = [];
+    const uploadErrors: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
           method: "POST",
           headers: {
             Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
             "Content-Type": "image/png",
             "x-upsert": "true",
           },
@@ -52,7 +54,9 @@ export async function POST(request: Request) {
 
       if (!response.ok) {
         const err = await response.text();
-        console.error(`[upload-to-storage] slide ${i + 1} failed:`, err);
+        const msg = `slide${i + 1}: HTTP ${response.status} — ${err.slice(0, 300)}`;
+        console.error(`[upload-to-storage] ${msg}`);
+        uploadErrors.push(msg);
       } else {
         imageUrls.push(
           `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`
@@ -60,7 +64,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ imageUrls, carouselId });
+    return NextResponse.json({ imageUrls, carouselId, uploadErrors });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
