@@ -108,11 +108,16 @@ export async function POST(request: Request) {
     }
 
     // Process image through Sharp: strip EXIF, enforce sRGB, max 1080px, convert to PNG
-    const processed = await sharp(Buffer.from(arrayBuffer))
-      .resize(1080, 1080, { fit: "inside", withoutEnlargement: true })
-      .toColorspace("srgb")
-      .png()
-      .toBuffer();
+    // skipResize=1 preserves original dimensions (used for Instagram carousel exports)
+    const url = new URL(request.url);
+    const skipResize = url.searchParams.get("skipResize") === "1";
+    const processed = skipResize
+      ? await sharp(Buffer.from(arrayBuffer)).toColorspace("srgb").png().toBuffer()
+      : await sharp(Buffer.from(arrayBuffer))
+          .resize(1080, 1080, { fit: "inside", withoutEnlargement: true })
+          .toColorspace("srgb")
+          .png()
+          .toBuffer();
 
     const filename = `${id}.png`;
     await writeFile(path.join(UPLOAD_DIR, filename), processed);
