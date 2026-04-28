@@ -2,6 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp", "archiver", "puppeteer"],
+  async rewrites() {
+    return {
+      // beforeFiles runs BEFORE the static-file check, so runtime-written
+      // files under public/uploads/ are always served by the API handler
+      // regardless of whether Next.js would have found them as static assets.
+      beforeFiles: [
+        {
+          source: "/uploads/:path*",
+          destination: "/api/uploads-proxy/:path*",
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {
