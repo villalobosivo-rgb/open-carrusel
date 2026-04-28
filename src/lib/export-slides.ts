@@ -130,7 +130,7 @@ export async function exportAllSlides(
   onProgress?: (current: number, total: number) => void
 ): Promise<{ name: string; buffer: Buffer }[]> {
   const results: { name: string; buffer: Buffer }[] = [];
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 1;
 
   for (let i = 0; i < slides.length; i += CONCURRENCY) {
     const batch = slides.slice(i, i + CONCURRENCY);
