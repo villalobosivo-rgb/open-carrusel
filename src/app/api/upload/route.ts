@@ -4,7 +4,9 @@ import path from "path";
 import sharp from "sharp";
 import { generateId } from "@/lib/utils";
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "public/uploads");
+// /tmp/uploads is guaranteed writable in Docker/Easypanel containers
+// (unlike process.cwd()/public/uploads which may not be served as static files in standalone mode)
+const UPLOAD_DIR = path.resolve("/tmp/uploads");
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Magic bytes for allowed image types

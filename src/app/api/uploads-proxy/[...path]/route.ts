@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "public/uploads");
+const UPLOAD_DIR = path.resolve("/tmp/uploads");
 
 const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
