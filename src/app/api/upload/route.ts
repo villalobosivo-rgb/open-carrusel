@@ -44,73 +44,94 @@ function detectType(
 
 export async function POST(request: Request) {
   try {
-    let formData: FormData;
-    try {
-      formData = await request.formData();
-    } catch {
-      return NextResponse.json(
-        { error: "Request must be multipart/form-data with a 'file' field" },
-        { status: 400 }
-      );
-    }
-    const file = formData.get("file");
+    const reqUrl = new URL(request.url);
+    const skipResize = reqUrl.searchParams.get("skipResize") === "1";
+    const fetchUrl = reqUrl.searchParams.get("url");
 
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 }
-      );
+    let arrayBuffer: ArrayBuffer;
+
+    if (fetchUrl) {
+      // URL-fetch mode: server fetches the image from the provided URL.
+      // Used by n8n carousel workflow to avoid multipart binary upload issues.
+      const resp = await fetch(fetchUrl);
+      if (!resp.ok) {
+        return NextResponse.json(
+          { error: `Failed to fetch image from URL: ${resp.status}` },
+          { status: 400 }
+        );
+      }
+      arrayBuffer = await resp.arrayBuffer();
+    } else {
+      // Normal mode: multipart form-data with a 'file' field
+      let formData: FormData;
+      try {
+        formData = await request.formData();
+      } catch {
+        return NextResponse.json(
+          { error: "Request must be multipart/form-data with a 'file' field" },
+          { status: 400 }
+        );
+      }
+      const file = formData.get("file");
+
+      if (!file || !(file instanceof File)) {
+        return NextResponse.json(
+          { error: "No file provided" },
+          { status: 400 }
+        );
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: "File too large (max 10MB)" },
+          { status: 400 }
+        );
+      }
+
+      // Reject SVGs explicitly (XSS risk)
+      const ext = path.extname(file.name).toLowerCase();
+      if (ext === ".svg" || file.type === "image/svg+xml") {
+        return NextResponse.json(
+          { error: "SVG files are not allowed" },
+          { status: 400 }
+        );
+      }
+
+      arrayBuffer = await file.arrayBuffer();
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large (max 10MB)" },
-        { status: 400 }
-      );
-    }
-
-    // Reject SVGs explicitly (XSS risk)
-    const ext = path.extname(file.name).toLowerCase();
-    if (ext === ".svg" || file.type === "image/svg+xml") {
-      return NextResponse.json(
-        { error: "SVG files are not allowed" },
-        { status: 400 }
-      );
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
 
-    // Validate magic bytes
-    const fileType = detectType(buffer);
-    if (!fileType) {
-      return NextResponse.json(
-        { error: "Unsupported file type. Allowed: PNG, JPG, WebP, WOFF2, TTF" },
-        { status: 400 }
-      );
+    // Validate magic bytes (skip for URL-fetch mode — trust the source)
+    if (!fetchUrl) {
+      const fileType = detectType(buffer);
+      if (!fileType) {
+        return NextResponse.json(
+          { error: "Unsupported file type. Allowed: PNG, JPG, WebP, WOFF2, TTF" },
+          { status: 400 }
+        );
+      }
+
+      const id = generateId();
+      await mkdir(UPLOAD_DIR, { recursive: true });
+
+      if (fileType === "font") {
+        const file = (await request.formData()).get("file") as File;
+        const ext = path.extname(file.name).toLowerCase();
+        const fontExt = ext === ".woff2" ? ".woff2" : ".ttf";
+        const fontDir = path.join(UPLOAD_DIR, "fonts");
+        await mkdir(fontDir, { recursive: true });
+        const filename = `${id}${fontExt}`;
+        await writeFile(path.join(fontDir, filename), Buffer.from(arrayBuffer));
+        return NextResponse.json({ id, url: `/uploads/fonts/${filename}`, type: "font" });
+      }
     }
 
+    // Process image through Sharp: strip EXIF, enforce sRGB, convert to PNG
+    // skipResize=1 preserves original dimensions (used for Instagram carousel exports)
     const id = generateId();
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    if (fileType === "font") {
-      // Save fonts directly — no Sharp processing
-      const fontExt = ext === ".woff2" ? ".woff2" : ".ttf";
-      const fontDir = path.join(UPLOAD_DIR, "fonts");
-      await mkdir(fontDir, { recursive: true });
-      const filename = `${id}${fontExt}`;
-      await writeFile(path.join(fontDir, filename), Buffer.from(arrayBuffer));
-      return NextResponse.json({
-        id,
-        url: `/uploads/fonts/${filename}`,
-        type: "font",
-      });
-    }
-
-    // Process image through Sharp: strip EXIF, enforce sRGB, max 1080px, convert to PNG
-    // skipResize=1 preserves original dimensions (used for Instagram carousel exports)
-    const url = new URL(request.url);
-    const skipResize = url.searchParams.get("skipResize") === "1";
     const processed = skipResize
       ? await sharp(Buffer.from(arrayBuffer)).toColorspace("srgb").png().toBuffer()
       : await sharp(Buffer.from(arrayBuffer))
@@ -122,11 +143,7 @@ export async function POST(request: Request) {
     const filename = `${id}.png`;
     await writeFile(path.join(UPLOAD_DIR, filename), processed);
 
-    return NextResponse.json({
-      id,
-      url: `/uploads/${filename}`,
-      type: "image",
-    });
+    return NextResponse.json({ id, url: `/uploads/${filename}`, type: "image" });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
