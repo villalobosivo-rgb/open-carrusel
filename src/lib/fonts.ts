@@ -73,12 +73,11 @@ async function cacheFont(family: string, css: string): Promise<void> {
 }
 
 async function fetchAndInlineFont(family: string): Promise<string | null> {
-  // Fetch CSS from Google Fonts (with woff2-capable user agent)
-  const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@300;400;500;600;700;800&display=block`;
+  // Only request Latin subset at the weights carousels actually use
+  const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700;900&display=block&subset=latin`;
   const response = await fetch(url, {
     signal: AbortSignal.timeout(6000),
     headers: {
-      // User agent that tells Google to serve woff2 format
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     },
@@ -87,27 +86,29 @@ async function fetchAndInlineFont(family: string): Promise<string | null> {
   if (!response.ok) return null;
   let css = await response.text();
 
-  // Find all url() references to woff2 files and inline them
+  // Find all url() references to woff2 files and inline them IN PARALLEL
   const urlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+\.woff2)\)/g;
   const matches = [...css.matchAll(urlRegex)];
 
-  for (const match of matches) {
-    const fontUrl = match[1];
-    try {
-      const fontResponse = await fetch(fontUrl, { signal: AbortSignal.timeout(8000) });
-      if (!fontResponse.ok) continue;
-      const buffer = await fontResponse.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
-      css = css.replace(
-        fontUrl,
-        `data:font/woff2;base64,${base64}`
-      );
-    } catch {
-      // Keep the original URL — Puppeteer can still fetch it
-    }
+  const replacements = await Promise.all(
+    matches.map(async (match) => {
+      const fontUrl = match[1];
+      try {
+        const fontResponse = await fetch(fontUrl, { signal: AbortSignal.timeout(8000) });
+        if (!fontResponse.ok) return null;
+        const buffer = await fontResponse.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        return { fontUrl, dataUri: `data:font/woff2;base64,${base64}` };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  for (const r of replacements) {
+    if (r) css = css.replace(r.fontUrl, r.dataUri);
   }
 
-  // Ensure font-display: block for deterministic rendering
   css = css.replace(/font-display:\s*swap/g, "font-display: block");
 
   return css;

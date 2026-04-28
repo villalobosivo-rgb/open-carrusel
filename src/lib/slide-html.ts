@@ -57,7 +57,7 @@ export function wrapSlideHtml(
     const params = fontFamilies
       .map(
         (f) =>
-          `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800`
+          `family=${encodeURIComponent(f)}:wght@400;700;900`
       )
       .join("&");
     fontBlock = `<link href="https://fonts.googleapis.com/css2?${params}&display=swap" rel="stylesheet">`;
