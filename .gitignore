@@ -26,7 +26,8 @@
 
 # app data (user-generated)
 /data/
-/public/uploads/
+/public/uploads/*
+!/public/uploads/revenight-wordmark.png
 
 # debug
 npm-debug.log*
